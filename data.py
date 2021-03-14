@@ -76,7 +76,7 @@ def get_batches(arr: np.array, n_seqs: int, n_steps: int):
     # Reshape into batch_size rows
     arr = arr.reshape(n_seqs, -1)
 
-    # TODO: Make batches
+    # Make Batches
     for n in range(0, arr.shape[1], n_steps):
         end = n+n_steps
         # The features
