@@ -1,15 +1,31 @@
+import os
+from typing import Tuple
+
 import numpy as np
 import torch
-from torch import nn
+from torch import nn, Tensor
 import torch.nn.functional as F
 
-from data import one_hot_encode
+from data import one_hot_encode, get_batches, get_data
 
 
 class CharRNN(nn.Module):
+    """
+    Character Level LSTM
+    """
 
-    def __init__(self, tokens, n_steps=100, n_hidden=256, n_layers=2,
+    def __init__(self, tokens, n_hidden=256, n_layers=2,
                  drop_prob=0.5, lr=0.001):
+        """
+
+        Parameters
+        ----------
+        tokens
+        n_hidden
+        n_layers
+        drop_prob
+        lr
+        """
         super().__init__()
         self.drop_prob = drop_prob
         self.n_layers = n_layers
@@ -26,7 +42,8 @@ class CharRNN(nn.Module):
         self.lstm = nn.LSTM(
             input_size=input_size,
             hidden_size=self.n_hidden,
-            num_layers=self.n_layers)
+            num_layers=self.n_layers,
+            batch_first=True)
 
         # define a dropout layer, self.dropout
         self.drop_out = nn.Dropout(drop_prob)
@@ -37,20 +54,22 @@ class CharRNN(nn.Module):
         # initialize the weights
         self.init_weights()
 
-    def forward(self, x, hc):
+    def forward(self, x: Tensor, hc: Tuple[Tensor, Tensor]) -> (Tensor, Tuple[Tensor, Tensor]):
         ''' Forward pass through the network.
             These inputs are x, and the hidden/cell state `hc`. '''
 
-        ## TODO: Get x, and the new hidden state (h, c) from the lstm
+        # Get x, and the new hidden state (h, c) from the lstm
 
         x, (h, c) = self.lstm(x, hc)
 
-        ## TODO: pass x through a droupout layer
+        # pass x through a dropout layer
+        x = self.drop_out(x)
 
         # Stack up LSTM outputs using view
-        x = x.view(x.size()[0] * x.size()[1], self.n_hidden)
+        x = x.reshape(-1, self.n_hidden)
 
-        ## TODO: put x through the fully-connected layer
+        # put x through the fully-connected layer
+        x = self.fc(x)
 
         # return x and the hidden state (h, c)
         return x, (h, c)
@@ -101,10 +120,45 @@ class CharRNN(nn.Module):
         # FC weights as random uniform
         self.fc.weight.data.uniform_(-1, 1)
 
-    def init_hidden(self, n_seqs):
+    def init_hidden(self, n_seqs: int) -> Tuple[Tensor, Tensor]:
         ''' Initializes hidden state '''
         # Create two new tensors with sizes n_layers x n_seqs x n_hidden,
         # initialized to zero, for hidden state and cell state of LSTM
         weight = next(self.parameters()).data
         return (weight.new(self.n_layers, n_seqs, self.n_hidden).zero_(),
                 weight.new(self.n_layers, n_seqs, self.n_hidden).zero_())
+
+
+if __name__ == '__main__':
+    data_dir = os.environ.get('DATA_DIR', 'data')
+    fn = f'{data_dir}/anna.txt'
+    anna = get_data(fn)
+    chars = tuple(set(anna))
+    n_chars = len(chars)
+    print('Number of characters', n_chars)
+
+    n_seqs = 10
+    n_steps = 50
+
+
+    lstm = CharRNN(chars)
+
+    # Initiate hidden layers
+    val_h = lstm.init_hidden(n_seqs)
+    batches = get_batches(anna, n_seqs=n_seqs, n_steps=n_steps)
+    x, y = next(batches)
+
+    x = one_hot_encode(x, n_chars)
+    x, y = torch.from_numpy(x), torch.from_numpy(y)
+
+    print('Input: ', x.shape)
+    print('Target: ', y.shape)
+    h, c = val_h
+    print('Initial h: ', h.shape)
+    print('Initial c:', c.shape)
+
+    val_h = tuple([each.data for each in val_h])
+    x, hc = lstm.forward(x, val_h)
+
+    # print(x.shape)
+    # print(h.shape)

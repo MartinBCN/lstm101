@@ -74,18 +74,18 @@ def get_batches(arr: np.array, n_seqs: int, n_steps: int):
     arr = arr[:n_batches * batch_size]
 
     # Reshape into batch_size rows
-    arr = arr.reshape(n_seqs, -1)
+    arr = arr.reshape((n_seqs, -1))
 
     # Make Batches
     for n in range(0, arr.shape[1], n_steps):
-        end = n+n_steps
+        end = n + n_steps
         # The features
         x = arr[:, n: end]
         # The targets, shifted by one
         y = np.zeros_like(x)
         y[:, :-1] = x[:, 1:]
 
-        if end <= arr.shape[1]:
+        if end < arr.shape[1]:
             y[:, -1] = arr[:, end]
         else:
             # start from the beginning?
@@ -104,6 +104,7 @@ if __name__ == '__main__':
 
     batches = get_batches(anna, 10, 50)
     x, y = next(batches)
+    print(x.shape)
 
     print('x\n', x[:10, :10])
     print('\ny\n', y[:10, :10])
