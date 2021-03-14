@@ -3,6 +3,8 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
+from data import one_hot_encode
+
 
 class CharRNN(nn.Module):
 
@@ -13,18 +15,24 @@ class CharRNN(nn.Module):
         self.n_layers = n_layers
         self.n_hidden = n_hidden
         self.lr = lr
+        input_size = len(tokens)
 
         # creating character dictionaries
         self.chars = tokens
         self.int2char = dict(enumerate(self.chars))
         self.char2int = {ch: ii for ii, ch in self.int2char.items()}
 
-        ## TODO: define the LSTM, self.lstm
-        # self.lstm =
+        # define the LSTM, self.lstm
+        self.lstm = nn.LSTM(
+            input_size=input_size,
+            hidden_size=self.n_hidden,
+            num_layers=self.n_layers)
 
-        ## TODO: define a dropout layer, self.dropout
+        # define a dropout layer, self.dropout
+        self.drop_out = nn.Dropout(drop_prob)
 
-        ## TODO: define the final, fully-connected output layer, self.fc
+        # Define the final, fully-connected output layer, self.fc
+        self.fc = nn.Linear(self.n_hidden, input_size)
 
         # initialize the weights
         self.init_weights()
@@ -34,6 +42,8 @@ class CharRNN(nn.Module):
             These inputs are x, and the hidden/cell state `hc`. '''
 
         ## TODO: Get x, and the new hidden state (h, c) from the lstm
+
+        x, (h, c) = self.lstm(x, hc)
 
         ## TODO: pass x through a droupout layer
 
